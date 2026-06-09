@@ -4,7 +4,7 @@
 **Datos · Modelos · Ventanas temporales · Lead times · Métricas**
 
 
-Este informe organiza el estado del arte en pronóstico de crecientes (flood forecasting) clasificando las publicaciones en cuatro categorías: ML clásico, deep learning puro, y enfoques híbridos (física + ML). Para cada categoría se detallan los datos usados, la arquitectura del pronóstico (ventana de entrada, lead time) y las métricas de desempeño reportadas.
+Este informe organiza el estado del arte en pronóstico de crecientes (flood forecasting) clasificando las publicaciones en tres categorías: ML clásico, deep learning puro, y enfoques híbridos (física + ML). Para cada categoría se detallan los datos usados, la arquitectura del pronóstico (ventana de entrada, lead time) y las métricas de desempeño reportadas.
 Fuentes principales: Kratzert et al. 2018/2019, Nearing et al. Nature 2024, Li et al. Sci. Reports 2024, Kumar et al. AIMS 2025, Frame et al. HESS 2022, Nguyen et al. River 2024, Hybrid-GR4J EMS 2025, QDeepGR4J JHydrol 2025, Huynh et al. HESS 2025, Taghizadeh et al. CACIE 2025, y revisiones de Water Resources Management 2025.
 
 
