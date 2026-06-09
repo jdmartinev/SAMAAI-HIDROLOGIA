@@ -219,7 +219,7 @@ Regla práctica: sin pronóstico meteorológico el lead time máximo alcanzable 
 
 Recomendación de orden de ataque:
 - Fase 1 — Línea de base: XGBoost con features de lag manual. Requiere lo mínimo (lluvia + nivel); rápido de implementar; sirve como benchmark.
-- Fase 2 — DL local: LSTM por cuenca con datos propios. Entrenado con NeuralHydrology (pip install neuralhydrology). Evaluar con NSE y KGE.
+- Fase 2 — DL local: LSTM por cuenca con datos propios. Entrenado con [NeuralHydrology](https://github.com/neuralhydrology/neuralhydrology) (pip install neuralhydrology). Evaluar con NSE y KGE.
 - Fase 3 — Regional (si tienen atributos de cuenca): EA-LSTM multi-cuenca. Permite predecir en cuencas con pocos datos históricos.
 - Fase 4 — Extensión del lead time: integrar ERA5-Land como forzante adicional y/o conectar con pronóstico NWP regional.
 - Fase 5 — Híbrido (opcional): si el equipo ya usa un modelo físico, acoplarlo con LSTM corrector (patrón HEC-HMS + ANN de Nguyen 2024) agrega interpretabilidad sin sacrificar precisión.
