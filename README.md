@@ -86,7 +86,8 @@ Arquitecturas principales: LSTM estándar (Kratzert 2018); EA-LSTM con atributos
 | Atributos estáticos de cuenca (EA-LSTM) | HydroATLAS, CAMELS | Estáticos | Área, pendiente, tipo suelo, LULC, clima |
 | Análisis de lag de flujo entre subcuencas | Calculado entre estaciones upstream-downstream | — | Información de tiempo de tránsito; mejora NSE en cuencas grandes |
 
-El paper de Nearing et al. (Nature, 2024) usó: ERA5-Land + ECMWF IFS + CPC Unified Gauge + IMERG (4 fuentes de precipitación) + 6 variables atmosféricas + atributos de cuenca HydroATLAS. Dataset total: 152.259 años-cuenca, 60 GB.
+El paper de Nearing et al. (Nature, 2024) usó: ERA5-Land + ECMWF IFS + CPC Unified Gauge + IMERG (4 fuentes de precipitación) + 6 variables atmosféricas + atributos de cuenca HydroATLAS. El dataset cubre 5680 cuencas globales con series históricas de aproximadamente 30 años en promedio, lo que resulta en ~152 000 años-cuenca de entrenamiento en total (152 259 según el preprint arxiv:2307.16104), ocupando 60 GB en disco.
+
 2.1.2  Arquitectura temporal del pronóstico
 
 | Parámetro | Valor típico | Referencia |
