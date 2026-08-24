@@ -20,49 +20,18 @@
 
 ## Lo que se hizo: Fases 1 y 2
 
-El estudio de la Quebrada La Oca (noviembre 2025 – junio 2026) evaluó siete familias de modelos sobre el sensor SN_1007 y el pluviómetro SP_108, con horizontes de pronóstico de 1, 2 y 3 horas a resolución de 5 minutos.
-
 ![Figura 1](figs/fig1.png)
-*Figura 1. Taxonomía de enfoques. El estudio cubrió las familias 1 y 2 (ML clásico y DL secuencial).*
+*Figura 1. Taxonomía de enfoques. El estudio cubrió las familias 1 y 2: modelos estadísticos clásicos y ML basado en árboles.*
 
-### Resultados globales (conjunto TEST fuera de muestra)
+El punto de partida fue instrumentar el problema correctamente. Se construyó una serie temporal común a partir de los datos del sensor de nivel y el pluviómetro de la cuenca, resolviendo problemas de frecuencia irregular, vacíos temporales y etiquetas de anomalía que, de haberse eliminado sin criterio, habrían descartado precisamente los eventos hidrológicos más relevantes. La resolución temporal adoptada fue de cinco minutos, con tres horizontes de pronóstico: una, dos y tres horas.
 
-**Horizonte 1 h**
+Un aspecto metodológico central fue el diseño para prevenir fuga de información. La división de los datos fue estrictamente cronológica, se aplicó purga temporal entre bloques y todos los modelos fueron configurados antes de acceder al conjunto de prueba. Esto garantiza que los resultados reflejen el desempeño real fuera de muestra y no una optimización retrospectiva.
 
-| Modelo | MAE (cm) | NSE | KGE |
-| :--- | :---: | :---: | :---: |
-| XGBoost | **1,354** | **0,983** | 0,971 |
-| Random Forest | 1,370 | 0,982 | 0,971 |
-| LSTM | 1,489 | 0,975 | **0,985** |
-| GRU | 1,592 | 0,977 | 0,975 |
-| ARIMA | 2,031 | 0,952 | 0,966 |
-| Persistencia | 2,107 | 0,925 | 0,963 |
+La primera familia evaluada fue la de **modelos estadísticos**: persistencia, ARIMA y ARIMAX. La persistencia —asumir que el nivel no cambiará durante el horizonte— funcionó como un baseline exigente dada la alta autocorrelación natural de la serie, pero se deterioró notablemente durante crecientes. ARIMA mejoró sobre la persistencia, especialmente en términos de error cuadrático. ARIMAX incorporó la precipitación de forma causal, pero la mejora fue marginal, lo que sugiere que la relación lluvia–nivel no puede representarse adecuadamente mediante un modelo lineal.
 
-**Horizonte 3 h**
+La segunda familia fue la de **ML clásico basado en árboles**: Random Forest y XGBoost. Ambos modelos recibieron como entrada un conjunto de variables construidas manualmente: retardos del nivel, cambios recientes, acumulados de precipitación en distintas ventanas temporales y el instante actual. Esta familia mostró el mejor desempeño global de la fase, con mejoras sustanciales frente a la persistencia en los tres horizontes. Random Forest destacó especialmente durante las crecientes rápidas, mientras que XGBoost fue más consistente en error promedio.
 
-| Modelo | MAE (cm) | NSE | KGE |
-| :--- | :---: | :---: | :---: |
-| XGBoost | **3,465** | 0,832 | 0,830 |
-| Random Forest | 3,491 | **0,834** | 0,848 |
-| GRU | 3,746 | 0,829 | **0,887** |
-| LSTM | 4,066 | 0,817 | 0,880 |
-| ARIMA | 5,330 | 0,653 | 0,828 |
-| Persistencia | 5,444 | 0,593 | 0,796 |
-
-La mejora frente a persistencia fue del **36–39 %** en MAE para los mejores modelos.
-
-### Hallazgo central
-
-Las métricas globales ocultan el comportamiento durante eventos críticos. En condiciones de creciente ≥ 20 cm, el mejor modelo (Random Forest) alcanzó un MAE de **17 cm a 1 h** y **37 cm a 3 h**, con subestimación en más del 85 % de los casos.
-
-| Dimensión evaluada | Mejor modelo | Observación |
-| :--- | :--- | :--- |
-| Error global | XGBoost / Random Forest | MAE 1–3,5 cm |
-| Crecientes ≥ 20 cm | Random Forest | MAE 17–37 cm; subestimación dominante |
-| Alertamiento ROJO (CSI) | **GRU** | CSI 0,950 a 1 h; 0,630 a 3 h |
-| Picos severos (≥ 310 cm) | GRU a 3 h | MAE 32 cm; más cercano al pico real en los dos eventos ROJO |
-
-> **Implicación directa para la siguiente fase:** la GRU captura estructuras temporales que XGBoost y RF no representan completamente, especialmente en los momentos que más importan operacionalmente. Esto motiva la profundización en arquitecturas recurrentes.
+Sin embargo, la evaluación reveló un hallazgo estructural importante: **las métricas globales ocultan el comportamiento durante los eventos críticos**. El error en condiciones de nivel elevado o ascenso rápido fue considerablemente mayor que el error promedio general, y todos los modelos mostraron una tendencia sistemática a subestimar la magnitud de los picos. Este desequilibrio entre el rendimiento cotidiano y el rendimiento durante crecientes es la principal motivación para continuar hacia las fases siguientes.
 
 ---
 
@@ -71,45 +40,35 @@ Las métricas globales ocultan el comportamiento durante eventos críticos. En c
 ![Figura 3](figs/fig3.png)
 *Figura 3. Ecosistema moderno de flood forecasting. El equipo está trabajando en el bloque C (Forecast Engine), familia Deep Learning.*
 
-Las líneas activas de trabajo son:
+Las Fases 1 y 2 dejaron claro que los modelos tabulares, aunque precisos en condiciones normales, no capturan plenamente la dinámica temporal del sistema durante eventos extremos. La hipótesis de trabajo es que arquitecturas recurrentes —que procesan la serie como una secuencia real y no como un vector de features ingeniadas— pueden representar mejor esa dinámica.
 
-- **Arquitecturas recurrentes:** explorar variantes de GRU con atención, Encoder-Decoder para predicción multi-step explícita, y ConvLSTM si se dispone de datos espaciales.
-- **Función de pérdida orientada a extremos:** reemplazar MSE estándar por funciones que penalicen más la subestimación de crecientes (pérdida asimétrica, pérdida ponderada por régimen hidrológico).
-- **Ventana de contexto:** el estudio usó 3 h (37 pasos a 5 min). Explorar ventanas de 6–12 h puede mejorar la captura de la dinámica antecedente.
-- **Información de precipitación:** el bajo beneficio de ARIMAX no implica que la lluvia sea irrelevante — sí lo es de forma no lineal. El LSTM/GRU puede capturarlo si se construyen secuencias correctas de precipitación acumulada.
+En esta fase se están evaluando redes **LSTM** y **GRU**. A diferencia de los modelos de árbol, estas redes reciben directamente las secuencias temporales de nivel y precipitación, sin necesidad de construir manualmente los retardos y acumulados. El contexto histórico utilizado abarca aproximadamente tres horas de observaciones pasadas, lo que captura la dinámica reciente del sistema sin reducir excesivamente el número de muestras disponibles dado el patrón de vacíos en los datos.
 
-### Qué NO cambiar respecto al diseño anterior
+Las líneas activas de exploración incluyen el ajuste de la función de pérdida para penalizar más los errores durante crecientes, la búsqueda de arquitecturas que mejoren la anticipación de picos, y el análisis de si la GRU —que en la fase anterior mostró señales interesantes en eventos extremos— mantiene esa ventaja cuando se entrena de forma más sistemática como red recurrente pura.
 
-- División cronológica estricta sin shuffle.
-- Purga temporal entre bloques de entrenamiento / validación / TEST.
-- Evaluación separada por régimen (global, crecientes, alertamiento, picos) — no solo MAE global.
-- Umbrales de alerta (260 / 310 / 350 cm) como referencia experimental hasta validación oficial con el equipo de hidrología.
+El criterio de evaluación no se limita al error promedio global. Se evalúa por separado el comportamiento durante crecientes rápidas, la capacidad de alertamiento ante niveles elevados y la predicción de la magnitud de los picos, siguiendo el mismo protocolo de evaluación multi-dimensión establecido en las fases anteriores.
 
 ---
 
 ## Qué viene: Fases 4 y 5
 
 ![Figura 2](figs/fig2.png)
-*Figura 2. Evolución histórica. Las fases 4 y 5 corresponden a los nodos 6–8 de la línea de tiempo.*
+*Figura 2. Evolución histórica. Las fases 4 y 5 corresponden a la incorporación de información meteorológica externa y al acoplamiento con modelos físicos.*
 
-**Fase 4 — Extensión del lead time con NWP**
+**Fase 4 — Extensión del lead time con pronóstico meteorológico**
 
-El tiempo de concentración de La Oca limita el lead time útil a ~1–3 h con solo datos observados. Para extender ese horizonte es necesario incorporar pronóstico de precipitación:
+El horizonte máximo alcanzable con solo datos observados está acotado por el tiempo de concentración de la cuenca: el tiempo que tarda el agua en llegar al sensor desde que comienza a llover. Para cuencas pequeñas y montañosas como las del área de estudio, ese tiempo puede ser inferior a tres horas, lo que limita estructuralmente la anticipación posible.
 
-- **ERA5-Land** (reanálisis, gratuito vía Copernicus CDS) — para entrenamiento histórico.
-- **ECMWF IFS / GFS / WRF regional** — para operación en tiempo real.
-
-Esto permitiría evaluar si es posible anticipar una creciente 6–12 h antes de que ocurra.
+La vía para extender ese horizonte es incorporar **pronóstico numérico del tiempo (NWP)**: información sobre la precipitación esperada en las próximas horas, proveniente de modelos como ERA5-Land (disponible gratuitamente para entrenamiento histórico vía Copernicus CDS), ECMWF IFS o modelos regionales tipo WRF. Con esa información, el modelo puede anticipar una creciente antes de que la lluvia haya comenzado a caer sobre la cuenca.
 
 **Fase 5 — Híbridos física + ML**
 
-Si el equipo cuenta con o puede calibrar un modelo conceptual (HEC-HMS, GR4J), el patrón más directo es usarlo como generador de variables de estado (humedad de suelo, escorrentía acumulada) que alimenten al DL. Esto mejora la generalización a eventos fuera de distribución y agrega interpretabilidad.
+Si el equipo cuenta con o puede calibrar un modelo hidrológico conceptual (HEC-HMS, GR4J), el paso natural es usarlo como fuente de variables de estado —humedad de suelo simulada, escorrentía acumulada, déficit de almacenamiento— que complementen los datos observados. Este enfoque híbrido mejora la generalización a eventos fuera de distribución y agrega interpretabilidad física al sistema, dos aspectos críticos para el uso operacional en gestión del riesgo.
 
 ---
 
 ## Referencias del informe base
 
-- García Surianu, S. (2026). *Predicción del nivel hidrométrico de la Quebrada La Oca mediante modelos estadísticos, aprendizaje automático y redes neuronales*. Periodo nov 2025 – jun 2026.
 - Kratzert et al. (2018, 2019) — HESS.
 - Nearing et al. (2024) — Nature 627. doi:10.1038/s41586-024-07145-1
 - Li et al. (2024) — Scientific Reports. doi:10.1038/s41598-024-62127-7
